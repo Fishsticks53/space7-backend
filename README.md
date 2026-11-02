@@ -260,11 +260,12 @@ BREVO_SMTP_PASS=your_brevo_api_key
 
 | Event | Direction | Description |
 |---|---|---|
-| `join_space` | Client → Server | Join a space room |
+| `join_space` | Client → Server | Join a space room (private spaces: members only; optional ack `{ ok, error }`) |
 | `leave_space` | Client → Server | Leave a space room |
-| `send_message` | Client → Server | Send message to space |
-| `receive_message` | Server → Client | New message received |
-| `message_appreciated` | Server → Client | Message appreciation update |
+| `receive_message` | Server → Client | New message received (emitted after `POST /api/messages/:spaceId`) |
+| `message_appreciated` | Server → Client | Message appreciation update (emitted after the appreciate endpoint) |
+
+Messages are sent over REST, not the socket, so the server can check membership and persist them first.
 
 ---
 

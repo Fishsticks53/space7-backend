@@ -18,7 +18,7 @@ class MessageController {
 
     async list(req, res, next) {
         try {
-            const result = await messageService.getMessages(req.params.spaceId, {
+            const result = await messageService.getMessages(req.params.spaceId, req.user.user_id, {
                 sort: req.query.sort,
                 page: parseInt(req.query.page) || 1,
                 limit: parseInt(req.query.limit) || 50,

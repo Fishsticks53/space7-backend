@@ -3,6 +3,7 @@ const { Message, MessageLike, User, Space, SpaceMember } = require('../models');
 const wordCounter = require('../utils/wordCounter');
 const cloudinary = require('../config/cloudinary');
 const notificationQueue = require('../queues/notificationQueue');
+const assertSpaceReadable = require('../utils/assertSpaceReadable');
 
 class MessageService {
     /**
@@ -76,7 +77,9 @@ class MessageService {
     /**
      * Get messages for a space with sorting.
      */
-    async getMessages(spaceId, { sort = 'recent', page = 1, limit = 50 }) {
+    async getMessages(spaceId, userId, { sort = 'recent', page = 1, limit = 50 }) {
+        await assertSpaceReadable(spaceId, userId);
+
         const offset = (page - 1) * limit;
 
         let order;

@@ -10,7 +10,7 @@ class SpaceController {
 
     async getById(req, res, next) {
         try {
-            const space = await spaceService.getSpaceById(req.params.id);
+            const space = await spaceService.getSpaceById(req.params.id, req.user.user_id);
             res.json(space);
         } catch (err) { next(err); }
     }

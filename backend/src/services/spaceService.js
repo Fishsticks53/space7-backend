@@ -2,6 +2,7 @@ const { Op, fn, col, literal } = require('sequelize');
 const { v4: uuidv4 } = require('uuid');
 const { Space, SpaceMember, User, Tag, SpaceTag, InviteCode, Message } = require('../models');
 const notificationQueue = require('../queues/notificationQueue');
+const assertSpaceReadable = require('../utils/assertSpaceReadable');
 
 class SpaceService {
     /**
@@ -31,13 +32,15 @@ class SpaceService {
             }
         }
 
-        return this.getSpaceById(space.space_id);
+        return this.getSpaceById(space.space_id, creatorId);
     }
 
     /**
      * Get a single space by ID with creator, members, tags, and message count.
      */
-    async getSpaceById(spaceId) {
+    async getSpaceById(spaceId, userId) {
+        await assertSpaceReadable(spaceId, userId);
+
         const space = await Space.findByPk(spaceId, {
             include: [
                 { model: User, as: 'creator', attributes: ['user_id', 'username', 'profile_picture'] },

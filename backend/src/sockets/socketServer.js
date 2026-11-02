@@ -1,5 +1,6 @@
 const { Server } = require('socket.io');
 const { verifyToken } = require('../utils/jwt');
+const assertSpaceReadable = require('../utils/assertSpaceReadable');
 
 let io;
 
@@ -28,36 +29,26 @@ function initSocket(httpServer) {
     io.on('connection', (socket) => {
         console.log(`🔌 User connected: ${socket.userId}`);
 
-        // Join a space room
-        socket.on('join_space', (spaceId) => {
-            socket.join(`space:${spaceId}`);
-            console.log(`User ${socket.userId} joined space:${spaceId}`);
+        // Join a space room. Private rooms are members only, otherwise anyone
+        // could listen in on receive_message broadcasts.
+        socket.on('join_space', async (spaceId, ack) => {
+            try {
+                await assertSpaceReadable(spaceId, socket.userId);
+                socket.join(`space:${spaceId}`);
+                if (typeof ack === 'function') ack({ ok: true });
+            } catch (err) {
+                if (typeof ack === 'function') ack({ ok: false, error: err.message });
+            }
         });
 
         // Leave a space room
         socket.on('leave_space', (spaceId) => {
             socket.leave(`space:${spaceId}`);
-            console.log(`User ${socket.userId} left space:${spaceId}`);
         });
 
-        // Send a message (broadcast to space room)
-        socket.on('send_message', (data) => {
-            const { spaceId, message } = data;
-            io.to(`space:${spaceId}`).emit('receive_message', {
-                ...message,
-                sender_id: socket.userId,
-            });
-        });
-
-        // Message appreciated
-        socket.on('message_appreciated', (data) => {
-            const { spaceId, messageId, appreciated, userId } = data;
-            io.to(`space:${spaceId}`).emit('message_appreciated', {
-                messageId,
-                appreciated,
-                userId,
-            });
-        });
+        // receive_message and message_appreciated are emitted by the REST
+        // controllers after the database write. Clients are not allowed to
+        // emit them, since a relayed payload could impersonate any user.
 
         socket.on('disconnect', () => {
             console.log(`🔌 User disconnected: ${socket.userId}`);
