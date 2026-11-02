@@ -68,3 +68,24 @@ describe('spaceService.getSpaceById', () => {
         await expect(spaceService.getSpaceById('s1', 'u1')).resolves.toMatchObject({ space_id: 's1' });
     });
 });
+
+describe('messageService.deleteMessage', () => {
+    test('a space creator cannot delete a message from a different space', async () => {
+        const message = { message_id: 'm1', space_id: 'other-space', sender_id: 'someone', destroy: jest.fn() };
+        Message.findByPk.mockResolvedValue(message);
+        // The caller is creator of s1 and passes s1 in the URL, but the message lives elsewhere.
+        SpaceMember.findOne.mockImplementation(({ where }) =>
+            Promise.resolve(where.space_id === 's1' && where.role === 'creator' ? { role: 'creator' } : null));
+        await expect(messageService.deleteMessage('m1', 'u1')).rejects.toMatchObject({ status: 403 });
+        expect(message.destroy).not.toHaveBeenCalled();
+    });
+});
+
+describe('messageService.toggleAppreciation', () => {
+    test('a non-member cannot appreciate a message in a private space', async () => {
+        Message.findByPk.mockResolvedValue({ message_id: 'm1', space_id: 's1', sender_id: 'someone' });
+        Space.findByPk.mockResolvedValue(privateSpace);
+        SpaceMember.findOne.mockResolvedValue(null);
+        await expect(messageService.toggleAppreciation('m1', 'u1')).rejects.toMatchObject({ status: 403 });
+    });
+});

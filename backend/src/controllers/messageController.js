@@ -41,7 +41,7 @@ class MessageController {
 
     async remove(req, res, next) {
         try {
-            const result = await messageService.deleteMessage(req.params.messageId, req.user.user_id, req.params.spaceId);
+            const result = await messageService.deleteMessage(req.params.messageId, req.user.user_id);
             res.json(result);
         } catch (err) { next(err); }
     }

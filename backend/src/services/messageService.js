@@ -118,6 +118,7 @@ class MessageService {
     async toggleAppreciation(messageId, userId) {
         const message = await Message.findByPk(messageId);
         if (!message) throw Object.assign(new Error('Message not found'), { status: 404 });
+        await assertSpaceReadable(message.space_id, userId);
 
         const existing = await MessageLike.findOne({ where: { message_id: messageId, user_id: userId } });
 
@@ -144,13 +145,15 @@ class MessageService {
     /**
      * Delete a message (creator or message author).
      */
-    async deleteMessage(messageId, userId, spaceId) {
+    async deleteMessage(messageId, userId) {
         const message = await Message.findByPk(messageId);
         if (!message) throw Object.assign(new Error('Message not found'), { status: 404 });
 
         const isAuthor = message.sender_id === userId;
         const isCreator = await SpaceMember.findOne({
-            where: { space_id: spaceId || message.space_id, user_id: userId, role: 'creator' },
+            // Use the message's own space, not the one in the URL, so a creator
+            // of one space cannot delete messages in another.
+            where: { space_id: message.space_id, user_id: userId, role: 'creator' },
         });
 
         if (!isAuthor && !isCreator) {
