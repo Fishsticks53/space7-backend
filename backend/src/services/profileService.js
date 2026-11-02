@@ -44,7 +44,7 @@ class ProfileService {
      * Get public profile of another user.
      */
     async getPublicProfile(userId) {
-        const profile = await this.getProfile(userId);
+        const { email: _email, ...profile } = await this.getProfile(userId);
 
         // Also get public spaces they created
         const publicSpaces = await Space.findAll({

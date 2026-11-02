@@ -3,6 +3,7 @@ const { Message, MessageLike, User, Space, SpaceMember } = require('../models');
 const wordCounter = require('../utils/wordCounter');
 const cloudinary = require('../config/cloudinary');
 const notificationQueue = require('../queues/notificationQueue');
+const assertSpaceReadable = require('../utils/assertSpaceReadable');
 
 class MessageService {
     /**
@@ -76,7 +77,9 @@ class MessageService {
     /**
      * Get messages for a space with sorting.
      */
-    async getMessages(spaceId, { sort = 'recent', page = 1, limit = 50 }) {
+    async getMessages(spaceId, userId, { sort = 'recent', page = 1, limit = 50 }) {
+        await assertSpaceReadable(spaceId, userId);
+
         const offset = (page - 1) * limit;
 
         let order;
@@ -115,6 +118,7 @@ class MessageService {
     async toggleAppreciation(messageId, userId) {
         const message = await Message.findByPk(messageId);
         if (!message) throw Object.assign(new Error('Message not found'), { status: 404 });
+        await assertSpaceReadable(message.space_id, userId);
 
         const existing = await MessageLike.findOne({ where: { message_id: messageId, user_id: userId } });
 
@@ -141,13 +145,15 @@ class MessageService {
     /**
      * Delete a message (creator or message author).
      */
-    async deleteMessage(messageId, userId, spaceId) {
+    async deleteMessage(messageId, userId) {
         const message = await Message.findByPk(messageId);
         if (!message) throw Object.assign(new Error('Message not found'), { status: 404 });
 
         const isAuthor = message.sender_id === userId;
         const isCreator = await SpaceMember.findOne({
-            where: { space_id: spaceId || message.space_id, user_id: userId, role: 'creator' },
+            // Use the message's own space, not the one in the URL, so a creator
+            // of one space cannot delete messages in another.
+            where: { space_id: message.space_id, user_id: userId, role: 'creator' },
         });
 
         if (!isAuthor && !isCreator) {
